@@ -293,7 +293,7 @@ def tosed_subtree(tree, slotmap):
 
 
 def tosed_tree(tree, valuemap, debug=False):
-    treevars = sorted(set(findvars(tree)))
+    treevars = sorted(set(findvars(tree)), key=lambda x: int(x[1:]))
     if any(name not in treevars for name in valuemap):
         raise ValueError("unused value")
 
@@ -303,8 +303,6 @@ def tosed_tree(tree, valuemap, debug=False):
     }
 
     init = "#".join("{:b}".format(valuemap.get(name, 0)) for name in treevars)
-
-    print(treevars, slotmap, init)
 
     statements = tosed_subtree(tree, slotmap)
     if debug:
@@ -422,48 +420,6 @@ def parse(lines):
 
     return out_block
 
-# program = parse("""
-# x_0 := 0      # result value, count successful div10
-# x_1 := x_1    # current value
-# x_10 := 10
-
-# WHILE x_1 ≠ 0 DO
-#       x_2 := 0      # intermediate result of division
-#       WHILE x_1 ≠ 0 DO
-#             x_1 := x_1 - 9
-#             x_5 := x_1
-#             WHILE x_5 ≠ 0 DO
-#                   x_5 := 0
-#                   x_2 := x_2 + 1
-#             END
-#             x_1 := x_1 - 1
-#       END
-#       x_1 := x_2
-#       x_0 := x_0 + 1
-# END
-# x_0 := x_0 - 1
-# """.split("\n"))
-
-# values = {"x1": 1000}
-
-# print(eval_tree(program, values))
-# init, compiled, names = tosed_tree(program, values)
-# print(init)
-# print(compiled)
-
-# import subprocess
-
-# print("=== executing using sed ===")
-# output = subprocess.run(
-#     ["sed", "-r", compiled],
-#     input=(init + "\n").encode("utf-8"),
-#     check=True,
-#     capture_output=True,
-# ).stdout.decode("utf-8").strip()
-# print(output)
-# last_line = output.rsplit("\n")[-1]
-
-# print({name: int(val, 2) for name, val in zip(names, last_line.split("#"))})
 
 if __name__ == "__main__":
     import argparse
@@ -493,7 +449,7 @@ if __name__ == "__main__":
     with args.infile as f:
         program = parse(f)
 
-    init, compiled, _ = tosed_tree(program, {})
+    _, compiled, varmap = tosed_tree(program, {})
 
     if args.outfile is None:
         args.outfile = sys.stdout
@@ -501,4 +457,7 @@ if __name__ == "__main__":
         args.outfile = open(args.outfile, "w")
 
     with args.outfile as f:
+        print("#!/bin/sed -rf", file=f)
+        print("# variable mapping:", file=f)
+        print("# {}".format(", ".join(varmap)), file=f)
         print(compiled, file=f)
