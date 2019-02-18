@@ -1,0 +1,19 @@
+x_0 := 0      # result value, count successful div10
+x_1 := x_1    # current value
+x_10 := 10
+
+WHILE x_1 DO
+      x_2 := 0      # intermediate result of division
+      WHILE x_1 DO
+            x_1 := x_1 - 9
+            x_5 := x_1
+            WHILE x_5 DO
+                  x_5 := 0
+                  x_2 := x_2 + 1
+            END
+            x_1 := x_1 - 1
+      END
+      x_1 := x_2
+      x_0 := x_0 + 1
+END
+x_0 := x_0 - 1
