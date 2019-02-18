@@ -7,15 +7,15 @@ The `whilesed.py` program converts a WHILE program (see below) to a sed program.
 ```
 $ python3 whilesed.py -o outfile.sed log10.while
 $ chmod +x outfile.sed
-$ echo '0#1010#0#0#0' | ./outfile.sed
-1#0#0#0#1010
+$ echo '0#10000000000#0#0#0' | ./outfile.sed
+11#0#0#0#1010#0
 ```
 
 ### Input/Output format
 
-The state of the program must be initialised completely. It is given by binary numbers separated by hashes. The above example initialises all but the second variable to zero; the second variable is initialised to 10 (binary `1010`).
+The state of the program must be initialised completely. It is given by binary numbers separated by hashes. The above example initialises all but the second variable to zero; the second variable is initialised to 1024 (binary `10000000000`).
 
-The output format is the same as the input format.
+The output format is the same as the input format. In the above example, the first output is 3 (binary `11`), which is the correct (rounded down) for log10(1024).
 
 The heading of the generated program contains the names of the variables in the order they are expected in the input.
 
