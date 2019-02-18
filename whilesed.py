@@ -173,6 +173,22 @@ y/_/1/
 s/^((.*)#)?0*(1[01]*)$/\\1\\3/;
 s/^((.*)#)?$/\\10/;
 """
+sed_add = """\
+s/^(.*)$/\\1#0#/; tadd{instance}
+:add{instance}
+s/^(.*)###([01])#([01]*)$/\\1#\\2\\3/; tadd{instance}_end
+s/^(.*)##([01]+)#([01])#([01]*)$/\\1#0#\\2#\\3#\\4/
+s/^(.*)#([01]+)##([01])#([01]*)$/\\1#\\2#0#\\3#\\4/
+s/^(.*)#([01]*)0#([01]*)0#0#([01]*)$/\\1#\\2#\\3#0#0\\4/; tadd{instance}
+s/^(.*)#([01]*)0#([01]*)0#1#([01]*)$/\\1#\\2#\\3#0#1\\4/; tadd{instance}
+s/^(.*)#([01]*)0#([01]*)1#0#([01]*)$/\\1#\\2#\\3#0#1\\4/; tadd{instance}
+s/^(.*)#([01]*)1#([01]*)0#0#([01]*)$/\\1#\\2#\\3#0#1\\4/; tadd{instance}
+s/^(.*)#([01]*)0#([01]*)1#1#([01]*)$/\\1#\\2#\\3#1#0\\4/; tadd{instance}
+s/^(.*)#([01]*)1#([01]*)1#0#([01]*)$/\\1#\\2#\\3#1#0\\4/; tadd{instance}
+s/^(.*)#([01]*)1#([01]*)0#1#([01]*)$/\\1#\\2#\\3#1#0\\4/; tadd{instance}
+s/^(.*)#([01]*)0#([01]*)0#0#([01]*)$/\\1#\\2#\\3#1#1\\4/; tadd{instance}
+:add{instance}_end
+"""
 
 
 def instantiate_sed_template(template, instance_id, **kwargs):
@@ -200,7 +216,16 @@ def tosed_subtree(tree, slotmap):
             index=src_index,
         )
 
-        if tree.constant.value > 0:
+        # XXX: the threshold for using the adder is arbitrary; we should do some benchmarking when the inc loop is more expensive than just adding
+        if tree.constant.value > 5:
+            # increase by constant using adder
+            # "push" constant
+            yield r"s/^(.+)$/\1#{:b}/".format(tree.constant.value)
+            yield instantiate_sed_template(
+                sed_add,
+                "{}".format(id(tree))
+            )
+        elif tree.constant.value > 0:
             # increase by constant
             for i in range(tree.constant.value):
                 yield instantiate_sed_template(
