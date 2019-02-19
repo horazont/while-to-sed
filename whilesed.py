@@ -188,6 +188,30 @@ s/^(.*)#([01]*)1#([01]*)1#0#([01]*)$/\\1#\\2#\\3#1#0\\4/; tadd{instance}
 s/^(.*)#([01]*)1#([01]*)0#1#([01]*)$/\\1#\\2#\\3#1#0\\4/; tadd{instance}
 s/^(.*)#([01]*)1#([01]*)1#1#([01]*)$/\\1#\\2#\\3#1#1\\4/; tadd{instance}
 :add{instance}_end
+s/^((.*)#)?0*(1[01]*)$/\\1\\3/;
+s/^((.*)#)?$/\\10/;
+"""
+
+sed_sub = """\
+s/^(.*)$/\\1#0#/; tsub{instance}
+:sub{instance}
+/^(.*)###1#[01]*$/bsub{instance}_zero
+s/^(.*)###0#([01]*)$/\\1#\\2/; tsub{instance}_end
+/^(.*)##[01]+#[01]#[01]*$/bsub{instance}_zero
+s/^(.*)#([01]+)##([01])#([01]*)$/\\1#\\2#0#\\3#\\4/
+s/^(.*)#([01]*)0#([01]*)0#0#([01]*)$/\\1#\\2#\\3#0#0\\4/; tsub{instance}
+s/^(.*)#([01]*)0#([01]*)0#1#([01]*)$/\\1#\\2#\\3#1#1\\4/; tsub{instance}
+s/^(.*)#([01]*)0#([01]*)1#0#([01]*)$/\\1#\\2#\\3#1#1\\4/; tsub{instance}
+s/^(.*)#([01]*)1#([01]*)0#0#([01]*)$/\\1#\\2#\\3#0#1\\4/; tsub{instance}
+s/^(.*)#([01]*)0#([01]*)1#1#([01]*)$/\\1#\\2#\\3#1#0\\4/; tsub{instance}
+s/^(.*)#([01]*)1#([01]*)1#0#([01]*)$/\\1#\\2#\\3#0#0\\4/; tsub{instance}
+s/^(.*)#([01]*)1#([01]*)0#1#([01]*)$/\\1#\\2#\\3#0#0\\4/; tsub{instance}
+s/^(.*)#([01]*)1#([01]*)1#1#([01]*)$/\\1#\\2#\\3#1#1\\4/; tsub{instance}
+:sub{instance}_zero
+s/^(.*)#([01]*)#([01]*)#([01])#([01]*)$/\\1#0/
+:sub{instance}_end
+s/^((.*)#)?0*(1[01]*)$/\\1\\3/;
+s/^((.*)#)?$/\\10/;
 """
 
 
@@ -232,6 +256,14 @@ def tosed_subtree(tree, slotmap):
                     sed_inc,
                     "{}_{}".format(id(tree), i)
                 )
+        elif tree.constant.value < -11:
+            # increase by constant using subber
+            # "push" constant
+            yield r"s/^(.+)$/\1#{:b}/".format(-tree.constant.value)
+            yield instantiate_sed_template(
+                sed_sub,
+                "{}".format(id(tree))
+            )
         elif tree.constant.value < 0:
             # decrease by constant
             for i in range(-tree.constant.value):
