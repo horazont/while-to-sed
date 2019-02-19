@@ -240,8 +240,9 @@ def tosed_subtree(tree, slotmap):
             index=src_index,
         )
 
-        # XXX: the threshold for using the adder is arbitrary; we should do some benchmarking when the inc loop is more expensive than just adding
-        if tree.constant.value > 5:
+        # 11 (and -11 respectively) is the break-even point for
+        # inc/dec vs. add/sub, found by benchmarking
+        if tree.constant.value > 10:
             # increase by constant using adder
             # "push" constant
             yield r"s/^(.+)$/\1#{:b}/".format(tree.constant.value)
