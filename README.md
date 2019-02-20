@@ -85,4 +85,14 @@ while x1
 end
 ```
 
-Loops and whiles can be arbitrarily nested.
+#### If
+
+Execute a block of statements once if a variable is non-zero.
+
+```
+if x1
+   ... more statements ...
+end
+```
+
+Control structures can be arbitrarily nested.

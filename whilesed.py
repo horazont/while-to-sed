@@ -40,6 +40,15 @@ class While(ASTNode):
         yield self.block
 
 
+class If(ASTNode):
+    def __init__(self, cond_var, block):
+        self.cond_var = cond_var
+        self.block = block
+
+    def visit(self):
+        yield self.block
+
+
 class Loop(ASTNode):
     def __init__(self, ctr_var, block):
         self.ctr_var = ctr_var
@@ -315,6 +324,7 @@ def tosed_subtree(tree, slotmap):
             sed_pop,
             id(tree)
         )
+
     elif isinstance(tree, While):
         # again, stacky
         var_index = slotmap[tree.cond_var]
@@ -343,6 +353,33 @@ def tosed_subtree(tree, slotmap):
         yield ":{}".format(exit_label)
         # pop counter value again
         yield instantiate_sed_template(sed_pop, id(tree))
+
+    elif isinstance(tree, If):
+        var_index = slotmap[tree.cond_var]
+        exit_label = "if_exit_{}".format(id(tree))
+        false_label = "if_false_{}".format(id(tree))
+
+        # check condition: load it to stack
+        yield instantiate_sed_template(
+            sed_load,
+            id(tree),
+            index=var_index,
+        )
+        # check condition: if zero, branch to exit
+        yield instantiate_sed_template(
+            sed_jz,
+            id(tree),
+            label=exit_label,
+        )
+        yield instantiate_sed_template(sed_pop, id(tree))
+        # if body
+        yield from tosed_subtree(tree.block, slotmap)
+        yield "b{}".format(exit_label)
+
+        yield ":{}".format(false_label)
+        yield instantiate_sed_template(sed_pop, id(tree))
+        yield ":{}".format(exit_label)
+
     elif isinstance(tree, Block):
         for node in tree.visit():
             yield from tosed_subtree(node, slotmap)
@@ -394,6 +431,10 @@ def parse(lines):
     )
     rx_while_start = re.compile(
         r"while\s*(?P<ctr>{ident})(\s*(!=|≠)\s*0+)?(\s*do)?".format(ident=rxs_identifier),
+        re.I,
+    )
+    rx_if_start = re.compile(
+        r"if\s+(?P<var>{ident})(\s*(!=|≠)\s*0+)?(\s*do)?".format(ident=rxs_identifier),
         re.I,
     )
     rx_end = re.compile(r"end", re.I)
@@ -463,6 +504,16 @@ def parse(lines):
 
             new_block = Block([])
             curr_stmts.append(While(normalise_name(info["ctr"]), new_block))
+            block_stack.append(curr_stmts)
+            curr_stmts = new_block.stmts
+            continue
+
+        m = rx_if_start.match(line)
+        if m is not None:
+            info = m.groupdict()
+
+            new_block = Block([])
+            curr_stmts.append(If(normalise_name(info["var"]), new_block))
             block_stack.append(curr_stmts)
             curr_stmts = new_block.stmts
             continue
