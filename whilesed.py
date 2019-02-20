@@ -153,7 +153,7 @@ def findvars(tree):
 sed_store = r"s/^(([^#]*#){{{index}}})([^#]*)((#[^#]*)*)#([^#]*)$/\1\6\4/"
 sed_load = r"s/^(([^#]*#){{{index}}})([^#]*)((#[^#]*)*)$/\1\3\4#\3/"
 sed_pop = r"s/^(.*)#([^#]*)$/\1/"
-sed_jz = r"/^((.*)#)?0$/b{label}"
+sed_jz = r"/^((.*)#|^)0$/b{label}"
 sed_inc = """\
 :inc{instance}
 :inc{instance}_d
