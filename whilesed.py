@@ -426,11 +426,11 @@ def parse(lines):
         re.I,
     )
     rx_loop_start = re.compile(
-        r"loop\s*(?P<ctr>{ident})(\s*do)?".format(ident=rxs_identifier),
+        r"loop\s+(?P<ctr>{ident})(\s*do)?".format(ident=rxs_identifier),
         re.I,
     )
     rx_while_start = re.compile(
-        r"while\s*(?P<ctr>{ident})(\s*(!=|≠)\s*0+)?(\s*do)?".format(ident=rxs_identifier),
+        r"while\s+(?P<ctr>{ident})(\s*(!=|≠)\s*0+)?(\s*do)?".format(ident=rxs_identifier),
         re.I,
     )
     rx_if_start = re.compile(
