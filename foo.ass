@@ -1,0 +1,3 @@
+    pushc 0                     ; return value
+
+    .

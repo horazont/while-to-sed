@@ -1,0 +1,47 @@
+    ;; memory layout
+    ;; 1: value
+    ;; 2: base
+    ;; 3: log result buffer
+    ;; 4: division result buffer
+
+    ;; flow: we have an outer loop which repeatedly divides the value by the base, while the input is larger than zero
+    ;; each iteration of the loop increases the result by one
+    ;; finally, we decrease the result by one, because the loop will execute at least once for any non-zero input
+
+    pushc 0                     ; result of log (stack position 3)
+
+    load 2                      ; take base minus one for division logic:
+    dec                         ; we subtract the (divisor minus one) and check for zero to detect when division fails
+    store 2
+
+    .logloop                    ; outer loop: repeatedly divide the input by the base
+    load 1                      ; check if input is zero
+    jz logexit                  ; if it is: we're done, go to cleanup
+
+    pushc 0                     ; result of division (stack position 4)
+
+    .divloop                    ; division implementation
+    load 1                      ; subtract the (divisor minus one) from the dividend
+    load 2
+    sub
+    dup
+    jz divexit                  ; if the result is zero, we're done with dividing
+    dec                         ; decrease the dividend by one again, because we subtracted (divisor minus one) instead of divisor
+    store 1                     ; store the updated input variable
+    load 4                      ; load the division result and increase it by one
+    inc
+    store 4
+    jmp divloop                 ; repeat division loop
+    .divexit
+    pop                         ; pop the division result buffer
+
+    store 1                     ; store the result of the division in the input variable for the next round
+    load 3                      ; increase logarithm result
+    inc
+    store 3
+    jmp logloop                 ; rinse & repeat
+
+    .logexit                    ; done with log
+    store 1                     ; store stack position 3 at position 1 (= write result to position 1)
+    pop                         ; remove remaining stack element
+    dec                         ; decrease result by one

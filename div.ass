@@ -1,0 +1,42 @@
+    ;; division in asmsed
+
+    ;; memory layout / arguments
+    ;; stackpos | use
+    ;; 1        | argument: left hand side of division
+    ;; 2        | argument: right hand side
+    ;; 3        | return value buffer
+
+    load 2                      ; test if rhs of division is one; if it is, return lhs immediately
+    dec
+    dup
+    store 2                     ; we need rhs minus one later
+    jz rhsone
+
+    pushc 0                     ; return value buffer
+
+    .loop
+    load 1                      ; current input value
+    load 2                      ; rhs minus one
+    sub
+    dup
+    jz loopexit                 ; input value was less than or equal to rhs minus one => done
+    dec                         ; decrease by one more to account for minus one above
+    store 1                     ; save result of subtraction as next input value
+    load 3                      ; return value
+    inc
+    store 3
+    jmp loop
+    .loopexit
+    pop
+
+    load 3                      ; move return value buffer to position 1
+    store 1
+    pop                         ; pop the remainder of the stack
+    pop
+
+    jmp exit
+
+    .rhsone                     ; the right hand side is one or zero
+    pop                         ; remove the rhs and return lhs
+
+    .exit
