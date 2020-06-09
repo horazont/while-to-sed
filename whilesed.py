@@ -81,8 +81,11 @@ class Constant(ASTNode):
 
 
 class AssignAddVar(ASTNode):
-    def __init__(self, out_var, op1_var, op2_var):
-        pass
+    def __init__(self, out_var, op1_var, operator, op2_var):
+        self.out_var = out_var
+        self.op1_var = op1_var
+        self.op2_var = op2_var
+        self.operator = operator
 
     # def lower_basic_LOOP(self):
     #     return [
@@ -145,6 +148,16 @@ def findvars(tree):
         yield tree.in_var
     elif isinstance(tree, Loop):
         yield tree.ctr_var
+    elif isinstance(tree, (While, If)):
+        yield tree.cond_var
+    elif isinstance(tree, AssignAddVar):
+        yield tree.out_var
+        yield tree.op1_var
+        yield tree.op2_var
+    elif isinstance(tree, Block):
+        pass
+    else:
+        raise NotImplementedError("findvars does not know {}".format(type(tree)))
 
     for node in tree.visit():
         yield from findvars(node)
@@ -197,8 +210,8 @@ s/^(.*)#([01]*)1#([01]*)1#0#([01]*)$/\\1#\\2#\\3#1#0\\4/; tadd{instance}
 s/^(.*)#([01]*)1#([01]*)0#1#([01]*)$/\\1#\\2#\\3#1#0\\4/; tadd{instance}
 s/^(.*)#([01]*)1#([01]*)1#1#([01]*)$/\\1#\\2#\\3#1#1\\4/; tadd{instance}
 :add{instance}_end
-s/^((.*)#)?0*(1[01]*)$/\\1\\3/;
-s/^((.*)#)?$/\\10/;
+s/^((.*)#|^)?0*(1[01]*)$/\\1\\3/;
+s/^((.*)#|^)?$/\\10/;
 """
 
 sed_sub = """\
@@ -219,8 +232,8 @@ s/^(.*)#([01]*)1#([01]*)1#1#([01]*)$/\\1#\\2#\\3#1#1\\4/; tsub{instance}
 :sub{instance}_zero
 s/^(.*)#([01]*)#([01]*)#([01])#([01]*)$/\\1#0/
 :sub{instance}_end
-s/^((.*)#)?0*(1[01]*)$/\\1\\3/;
-s/^((.*)#)?$/\\10/;
+s/^((.*)#|^)?0*(1[01]*)$/\\1\\3/;
+s/^((.*)#|^)?$/\\10/;
 """
 
 
@@ -239,6 +252,7 @@ def tosed_subtree(tree, slotmap):
             id(tree),
             index=dest_index,
         )
+
     elif isinstance(tree, AssignAdd):
         src_index = slotmap[tree.in_var]
         dest_index = slotmap[tree.out_var]
@@ -266,7 +280,7 @@ def tosed_subtree(tree, slotmap):
                     sed_inc,
                     "{}_{}".format(id(tree), i)
                 )
-        elif tree.constant.value < -11:
+        elif tree.constant.value < -1:
             # increase by constant using subber
             # "push" constant
             yield r"s/^(.+)$/\1#{:b}/".format(-tree.constant.value)
@@ -288,6 +302,43 @@ def tosed_subtree(tree, slotmap):
             id(tree),
             index=dest_index,
         )
+
+    elif isinstance(tree, AssignAddVar):
+        in1_index = slotmap[tree.op1_var]
+        in2_index = slotmap[tree.op2_var]
+        out_index = slotmap[tree.out_var]
+
+        # push both inputs on the stack
+        yield instantiate_sed_template(
+            sed_load,
+            id(tree),
+            index=in1_index,
+        )
+        yield instantiate_sed_template(
+            sed_load,
+            id(tree),
+            index=in2_index,
+        )
+
+        # invoke the operator
+        if tree.operator == '+':
+            yield instantiate_sed_template(
+                sed_add,
+                "{}".format(id(tree))
+            )
+        else:
+            yield instantiate_sed_template(
+                sed_sub,
+                "{}".format(id(tree))
+            )
+
+        # store the reuslt
+        yield instantiate_sed_template(
+            sed_store,
+            id(tree),
+            index=out_index,
+        )
+
     elif isinstance(tree, Loop):
         # this will become slightly stacky, but I don’t think that’s an issue
         src_index = slotmap[tree.ctr_var]
@@ -414,27 +465,31 @@ def parse(lines):
     rxs_identifier = "x_?[0-9]+"
     rx_identifier = re.compile("x_?([0-9]+)")
     rx_assign_const = re.compile(
-        r"(?P<target>{ident})\s*:?=\s*(?P<value>[0-9]+)".format(ident=rxs_identifier),
+        r"^(?P<target>{ident})\s*:?=\s*(?P<value>[0-9]+)$".format(ident=rxs_identifier),
         re.I,
     )
     rx_assign_op = re.compile(
-        r"(?P<target>{ident})\s*:?=\s*(?P<var>{ident})\s*(?P<op>[-+])\s*(?P<const>[0-9]+)".format(ident=rxs_identifier),
+        r"^(?P<target>{ident})\s*:?=\s*(?P<var>{ident})\s*(?P<op>[-+])\s*(?P<const>[0-9]+)$".format(ident=rxs_identifier),
+        re.I,
+    )
+    rx_assign_op_var = re.compile(
+        r"^(?P<target>{ident})\s*:?=\s*(?P<var1>{ident})\s*(?P<op>[-+])\s*(?P<var2>{ident})$".format(ident=rxs_identifier),
         re.I,
     )
     rx_assign_var = re.compile(
-        r"(?P<target>{ident})\s*:?=\s*(?P<var>{ident})".format(ident=rxs_identifier),
+        r"^(?P<target>{ident})\s*:?=\s*(?P<var>{ident})$".format(ident=rxs_identifier),
         re.I,
     )
     rx_loop_start = re.compile(
-        r"loop\s+(?P<ctr>{ident})(\s*do)?".format(ident=rxs_identifier),
+        r"^loop\s+(?P<ctr>{ident})(\s*do)?$".format(ident=rxs_identifier),
         re.I,
     )
     rx_while_start = re.compile(
-        r"while\s+(?P<ctr>{ident})(\s*(!=|≠)\s*0+)?(\s*do)?".format(ident=rxs_identifier),
+        r"^while\s+(?P<ctr>{ident})(\s*(!=|≠)\s*0+)?(\s*do)?$".format(ident=rxs_identifier),
         re.I,
     )
     rx_if_start = re.compile(
-        r"if\s+(?P<var>{ident})(\s*(!=|≠)\s*0+)?(\s*do)?".format(ident=rxs_identifier),
+        r"^if\s+(?P<var>{ident})(\s*(!=|≠)\s*0+)?(\s*do)?$".format(ident=rxs_identifier),
         re.I,
     )
     rx_end = re.compile(r"end", re.I)
@@ -448,8 +503,8 @@ def parse(lines):
     curr_stmts = out_block.stmts
 
     for i, line_raw in enumerate(lines, 1):
-        line = rx_comment.sub(line_raw, r"\1")
-        line = line_raw.strip()
+        line = rx_comment.sub(r"\1", line_raw)
+        line = line.strip()
         if not line:
             continue
 
@@ -485,6 +540,18 @@ def parse(lines):
                 normalise_name(info["target"]),
                 normalise_name(info["var"]),
                 Constant(0),
+            ))
+            continue
+
+        m = rx_assign_op_var.match(line)
+        if m is not None:
+            info = m.groupdict()
+
+            curr_stmts.append(AssignAddVar(
+                normalise_name(info["target"]),
+                normalise_name(info["var1"]),
+                info["op"],
+                normalise_name(info["var2"]),
             ))
             continue
 
