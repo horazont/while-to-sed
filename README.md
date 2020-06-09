@@ -37,6 +37,12 @@ This example program calculates the integer logartihm to an arbitrary base. In
 this case, it is invoked to calculate the logarithm 512 (`1000000000`) to the
 base 10 (`1010`). The output is rounded down, so it prints 2 (`10`).
 
+### Examples
+
+- [`logn.ass`](logn.ass) Calculate the floored integer logartihm.
+- [`div.ass`](div.ass) Divide two integer numbers, returning the floored
+  result.
+
 ### Machine model
 
 The machine corresponding to the instruction set is a stack machine with
